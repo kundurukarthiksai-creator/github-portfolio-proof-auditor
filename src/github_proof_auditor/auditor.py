@@ -13,7 +13,8 @@ from typing import Any
 
 BLOCKED_PATTERNS = [
     ("local Windows path", re.compile(r"\b[A-Z]:\\", re.IGNORECASE)),
-    ("visa/status wording", re.compile(r"\b(H-1B|H1B|F-1|OPT|STEM OPT|visa|sponsorship)\b", re.IGNORECASE)),
+    ("visa/status wording", re.compile(r"\b(H-1B|H1B|F-1|STEM OPT|visa|sponsorship)\b", re.IGNORECASE)),
+    ("work authorization acronym", re.compile(r"(?<![A-Za-z-])OPT(?![A-Za-z-])")),
     ("overclaim: production ready", re.compile(r"\bproduction[- ]ready\b", re.IGNORECASE)),
     ("overclaim: fully production", re.compile(r"\bfully production\b", re.IGNORECASE)),
 ]

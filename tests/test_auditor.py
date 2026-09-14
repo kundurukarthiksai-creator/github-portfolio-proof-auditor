@@ -23,6 +23,10 @@ class PatternTests(unittest.TestCase):
         self.assertIn("local Windows path", labels)
         self.assertIn("visa/status wording", labels)
 
+    def test_opt_in_does_not_trigger_work_authorization_acronym(self) -> None:
+        self.assertNotIn("work authorization acronym", detect_blocked_patterns("README link checks are opt-in."))
+        self.assertIn("work authorization acronym", detect_blocked_patterns("Do not publish OPT wording."))
+
     def test_detects_positive_readme_signals(self) -> None:
         readme = "GitHub Actions CI runs smoke tests. Honest Limits. Live demo included."
         signals = detect_positive_signals(readme)
