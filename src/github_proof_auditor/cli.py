@@ -5,7 +5,7 @@ import json
 import sys
 from pathlib import Path
 
-from .auditor import RepoAudit, add_finding, audit_repo, render_markdown
+from .auditor import RepoAudit, add_finding, audit_repo, render_json, render_markdown
 
 
 DEFAULT_REPOS = [
@@ -30,7 +30,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Audit public GitHub repos for proof quality.")
     parser.add_argument("repos", nargs="*", help="owner/repo values to audit")
     parser.add_argument("--config", type=Path, help="JSON config path with a repos list")
-    parser.add_argument("--output", type=Path, help="Markdown output path")
+    parser.add_argument("--format", choices=["markdown", "json"], default="markdown", help="Report output format")
+    parser.add_argument("--output", type=Path, help="Report output path")
     return parser.parse_args(argv)
 
 
@@ -42,8 +43,7 @@ def resolve_repos(args: argparse.Namespace) -> list[str]:
     return DEFAULT_REPOS
 
 
-def run(argv: list[str] | None = None) -> str:
-    args = parse_args(argv)
+def collect_audits(args: argparse.Namespace) -> list[RepoAudit]:
     repos = resolve_repos(args)
 
     audits: list[RepoAudit] = []
@@ -54,13 +54,23 @@ def run(argv: list[str] | None = None) -> str:
             audit = RepoAudit(repo=repo)
             add_finding(audit, "fail", f"Audit crashed for this repo: {exc}")
             audits.append(audit)
+    return audits
 
+
+def render_report(audits: list[RepoAudit], output_format: str) -> str:
+    if output_format == "json":
+        return render_json(audits)
     return render_markdown(audits)
+
+
+def run(argv: list[str] | None = None) -> str:
+    args = parse_args(argv)
+    return render_report(collect_audits(args), args.format)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    report = run(argv)
+    report = render_report(collect_audits(args), args.format)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(report, encoding="utf-8")

@@ -281,3 +281,51 @@ def render_markdown(audits: list[RepoAudit]) -> str:
         ]
     )
     return "\n".join(lines) + "\n"
+
+
+def audit_to_dict(audit: RepoAudit) -> dict[str, Any]:
+    latest_run = None
+    if audit.latest_run:
+        latest_run = {
+            "name": audit.latest_run.get("name"),
+            "status": audit.latest_run.get("status"),
+            "conclusion": audit.latest_run.get("conclusion"),
+            "url": audit.latest_run.get("html_url"),
+        }
+
+    return {
+        "repo": audit.repo,
+        "url": audit.url,
+        "description": audit.description,
+        "homepage": audit.homepage,
+        "default_branch": audit.default_branch,
+        "topics": audit.topics,
+        "latest_run": latest_run,
+        "readme_chars": audit.readme_chars,
+        "readme_signals": audit.readme_signals,
+        "homepage_status": audit.homepage_status,
+        "score": audit.score,
+        "status": audit.status,
+        "findings": [
+            {
+                "severity": finding.severity,
+                "message": finding.message,
+            }
+            for finding in audit.findings
+        ],
+    }
+
+
+def render_json(audits: list[RepoAudit]) -> str:
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    payload = {
+        "generated_at": generated_at,
+        "summary": {
+            "repo_count": len(audits),
+            "good": sum(1 for audit in audits if audit.status == "Good"),
+            "watch": sum(1 for audit in audits if audit.status == "Watch"),
+            "needs_fix": sum(1 for audit in audits if audit.status == "Needs fix"),
+        },
+        "audits": [audit_to_dict(audit) for audit in audits],
+    }
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"

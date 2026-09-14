@@ -2,7 +2,7 @@
 
 CLI for auditing whether public GitHub portfolio repositories have recruiter-facing proof that is easy to trust.
 
-It checks repo metadata, README proof signals, risky public wording, latest GitHub Actions status, and homepage health, then writes a Markdown report.
+It checks repo metadata, README proof signals, risky public wording, latest GitHub Actions status, and homepage health, then writes Markdown or JSON reports.
 
 ## Why This Exists
 
@@ -45,6 +45,12 @@ Run with a config file:
 
 ```powershell
 python -m github_proof_auditor --config configs/karthik-public-repos.json --output reports/karthik-public-repos.md
+```
+
+Write structured JSON:
+
+```powershell
+python -m github_proof_auditor --config configs/karthik-public-repos.json --format json --output reports/karthik-public-repos.json
 ```
 
 Config format:

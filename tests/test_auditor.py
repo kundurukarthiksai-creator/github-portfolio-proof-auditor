@@ -1,11 +1,14 @@
 import unittest
+import json
 
 from github_proof_auditor.auditor import (
     RepoAudit,
     add_finding,
+    audit_to_dict,
     detect_blocked_patterns,
     detect_positive_signals,
     is_profile_repo,
+    render_json,
     render_markdown,
 )
 from github_proof_auditor.cli import load_config
@@ -57,6 +60,44 @@ class RenderTests(unittest.TestCase):
         self.assertIn("GitHub Proof Auditor Report", report)
         self.assertIn("| [owner/repo](https://github.com/owner/repo) | 90 | Watch |", report)
         self.assertIn("[WARN] No demo.", report)
+
+    def test_render_json_includes_summary_and_structured_findings(self) -> None:
+        audit = RepoAudit(
+            repo="owner/repo",
+            url="https://github.com/owner/repo",
+            description="A test repo",
+            readme_chars=1200,
+            readme_signals=["ci", "tests", "limits"],
+        )
+        add_finding(audit, "warn", "No demo.")
+        payload = json.loads(render_json([audit]))
+        self.assertEqual(payload["summary"]["repo_count"], 1)
+        self.assertEqual(payload["summary"]["watch"], 1)
+        self.assertEqual(payload["audits"][0]["repo"], "owner/repo")
+        self.assertEqual(payload["audits"][0]["score"], 90)
+        self.assertEqual(payload["audits"][0]["findings"][0]["message"], "No demo.")
+
+    def test_audit_to_dict_keeps_latest_run_subset(self) -> None:
+        audit = RepoAudit(
+            repo="owner/repo",
+            latest_run={
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "success",
+                "html_url": "https://example.test/run",
+                "extra": "not exported",
+            },
+        )
+        data = audit_to_dict(audit)
+        self.assertEqual(
+            data["latest_run"],
+            {
+                "name": "CI",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://example.test/run",
+            },
+        )
 
 
 class ConfigTests(unittest.TestCase):
