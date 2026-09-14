@@ -9,6 +9,8 @@ from .auditor import RepoAudit, add_finding, audit_repo, render_json, render_mar
 
 
 DEFAULT_REPOS = [
+    "kundurukarthiksai-creator/mcp-tool-safety-lab",
+    "kundurukarthiksai-creator/github-portfolio-proof-auditor",
     "kundurukarthiksai-creator/agent-reliability-tool-use-eval-lab",
     "kundurukarthiksai-creator/AI-LinkedIn-Post-Generator",
     "kundurukarthiksai-creator/OpportUnityHub-Smart-Opportunity-Tracker",

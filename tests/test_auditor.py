@@ -13,7 +13,7 @@ from github_proof_auditor.auditor import (
     render_json,
     render_markdown,
 )
-from github_proof_auditor.cli import load_config
+from github_proof_auditor.cli import DEFAULT_REPOS, load_config
 
 
 class PatternTests(unittest.TestCase):
@@ -146,6 +146,12 @@ class RenderTests(unittest.TestCase):
 
 
 class ConfigTests(unittest.TestCase):
+    def test_default_repos_include_public_proof_projects(self) -> None:
+        self.assertIn("kundurukarthiksai-creator/mcp-tool-safety-lab", DEFAULT_REPOS)
+        self.assertIn("kundurukarthiksai-creator/github-portfolio-proof-auditor", DEFAULT_REPOS)
+        self.assertIn("kundurukarthiksai-creator/agent-reliability-tool-use-eval-lab", DEFAULT_REPOS)
+        self.assertEqual(len(DEFAULT_REPOS), 8)
+
     def test_load_config(self) -> None:
         import tempfile
         from pathlib import Path
