@@ -7,6 +7,8 @@ from github_proof_auditor.auditor import (
     audit_to_dict,
     detect_blocked_patterns,
     detect_positive_signals,
+    evaluate_readme_links,
+    extract_http_links,
     is_profile_repo,
     render_json,
     render_markdown,
@@ -25,6 +27,22 @@ class PatternTests(unittest.TestCase):
         readme = "GitHub Actions CI runs smoke tests. Honest Limits. Live demo included."
         signals = detect_positive_signals(readme)
         self.assertEqual(signals, ["ci", "tests", "limits", "demo"])
+
+    def test_extract_http_links_ignores_relative_and_duplicate_links(self) -> None:
+        readme = (
+            "[Repo](https://github.com/owner/repo) "
+            "![Badge](https://img.shields.io/badge/test-pass-green) "
+            "[Relative](docs/setup.md) "
+            "[Mail](mailto:test@example.com) "
+            "[Repo again](https://github.com/owner/repo)"
+        )
+        self.assertEqual(
+            extract_http_links(readme),
+            [
+                "https://github.com/owner/repo",
+                "https://img.shields.io/badge/test-pass-green",
+            ],
+        )
 
 
 class AuditModelTests(unittest.TestCase):
@@ -98,6 +116,29 @@ class RenderTests(unittest.TestCase):
                 "url": "https://example.test/run",
             },
         )
+
+    def test_audit_to_dict_includes_readme_link_checks(self) -> None:
+        audit = RepoAudit(repo="owner/repo")
+        evaluate_readme_links(audit, "[Good](https://example.test/good)", checker=lambda _url: "200")
+        data = audit_to_dict(audit)
+        self.assertEqual(
+            data["readme_link_checks"],
+            [{"url": "https://example.test/good", "status": "200"}],
+        )
+
+    def test_readme_link_checks_warn_on_non_200(self) -> None:
+        audit = RepoAudit(repo="owner/repo")
+        statuses = {
+            "https://example.test/good": "200",
+            "https://example.test/missing": "404",
+        }
+        readme = "[Good](https://example.test/good) [Missing](https://example.test/missing)"
+        evaluate_readme_links(audit, readme, checker=lambda url: statuses[url])
+        self.assertEqual(len(audit.readme_link_checks), 2)
+        self.assertEqual(audit.readme_link_checks[0].status, "200")
+        self.assertEqual(audit.readme_link_checks[1].status, "404")
+        self.assertEqual(audit.findings[0].severity, "warn")
+        self.assertIn("README link returned 404", audit.findings[0].message)
 
 
 class ConfigTests(unittest.TestCase):

@@ -32,6 +32,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--config", type=Path, help="JSON config path with a repos list")
     parser.add_argument("--format", choices=["markdown", "json"], default="markdown", help="Report output format")
     parser.add_argument("--output", type=Path, help="Report output path")
+    parser.add_argument(
+        "--check-readme-links",
+        action="store_true",
+        help="Check HTTP(S) links found in each README. This is slower and can be affected by network issues.",
+    )
     return parser.parse_args(argv)
 
 
@@ -49,7 +54,7 @@ def collect_audits(args: argparse.Namespace) -> list[RepoAudit]:
     audits: list[RepoAudit] = []
     for repo in repos:
         try:
-            audits.append(audit_repo(repo))
+            audits.append(audit_repo(repo, check_readme_links=args.check_readme_links))
         except Exception as exc:  # noqa: BLE001 - keep auditing other repos.
             audit = RepoAudit(repo=repo)
             add_finding(audit, "fail", f"Audit crashed for this repo: {exc}")

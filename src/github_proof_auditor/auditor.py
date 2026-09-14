@@ -33,6 +33,12 @@ class Finding:
 
 
 @dataclass
+class LinkCheck:
+    url: str
+    status: str
+
+
+@dataclass
 class RepoAudit:
     repo: str
     url: str = ""
@@ -43,6 +49,7 @@ class RepoAudit:
     latest_run: dict[str, Any] | None = None
     readme_chars: int = 0
     readme_signals: list[str] = field(default_factory=list)
+    readme_link_checks: list[LinkCheck] = field(default_factory=list)
     homepage_status: str = ""
     findings: list[Finding] = field(default_factory=list)
 
@@ -82,6 +89,21 @@ def detect_blocked_patterns(text: str) -> list[str]:
 
 def detect_positive_signals(readme: str) -> list[str]:
     return [label for label, pattern in POSITIVE_README_SIGNALS if pattern.search(readme)]
+
+
+def extract_http_links(markdown: str) -> list[str]:
+    links: list[str] = []
+    seen: set[str] = set()
+    pattern = re.compile(r"!?\[[^\]]*]\(([^)\s]+)(?:\s+['\"][^'\"]*['\"])?\)")
+    for match in pattern.finditer(markdown):
+        url = match.group(1).strip("<>")
+        if not url.lower().startswith(("http://", "https://")):
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+        links.append(url)
+    return links
 
 
 def run_json(args: list[str]) -> Any:
@@ -132,6 +154,14 @@ def check_url(url: str) -> str:
         return f"error: {exc.__class__.__name__}"
 
 
+def evaluate_readme_links(audit: RepoAudit, readme: str, checker=check_url) -> None:
+    for url in extract_http_links(readme):
+        status = checker(url)
+        audit.readme_link_checks.append(LinkCheck(url=url, status=status))
+        if status != "200":
+            add_finding(audit, "warn", f"README link returned {status}: {url}")
+
+
 def evaluate_repo_metadata(audit: RepoAudit, repo: dict[str, Any], profile_repo: bool) -> None:
     if repo.get("isArchived"):
         add_finding(audit, "fail", "Repository is archived.")
@@ -163,7 +193,7 @@ def evaluate_readme(audit: RepoAudit, readme: str) -> None:
         add_finding(audit, "warn", "README does not clearly mention limits/safety/honest scope.")
 
 
-def audit_repo(owner_repo: str) -> RepoAudit:
+def audit_repo(owner_repo: str, check_readme_links: bool = False) -> RepoAudit:
     profile_repo = is_profile_repo(owner_repo)
     audit = RepoAudit(repo=owner_repo)
 
@@ -183,6 +213,8 @@ def audit_repo(owner_repo: str) -> RepoAudit:
         add_finding(audit, "fail", f"README could not be read: {exc}")
 
     evaluate_readme(audit, readme)
+    if check_readme_links:
+        evaluate_readme_links(audit, readme)
 
     try:
         audit.latest_run = get_latest_run(owner_repo)
@@ -245,6 +277,7 @@ def render_markdown(audits: list[RepoAudit]) -> str:
                 f"- Topics: {', '.join(audit.topics) or 'none'}",
                 f"- README characters: {audit.readme_chars}",
                 f"- README signals: {', '.join(audit.readme_signals) or 'none'}",
+                f"- README links checked: {len(audit.readme_link_checks)}",
             ]
         )
         if audit.latest_run:
@@ -265,6 +298,11 @@ def render_markdown(audits: list[RepoAudit]) -> str:
         else:
             lines.append("")
             lines.append("Findings: none.")
+        if audit.readme_link_checks:
+            lines.append("")
+            lines.append("README link checks:")
+            for link in audit.readme_link_checks:
+                lines.append(f"- `{link.status}` {link.url}")
         lines.append("")
 
     lines.extend(
@@ -303,6 +341,13 @@ def audit_to_dict(audit: RepoAudit) -> dict[str, Any]:
         "latest_run": latest_run,
         "readme_chars": audit.readme_chars,
         "readme_signals": audit.readme_signals,
+        "readme_link_checks": [
+            {
+                "url": link.url,
+                "status": link.status,
+            }
+            for link in audit.readme_link_checks
+        ],
         "homepage_status": audit.homepage_status,
         "score": audit.score,
         "status": audit.status,

@@ -2,7 +2,7 @@
 
 CLI for auditing whether public GitHub portfolio repositories have recruiter-facing proof that is easy to trust.
 
-It checks repo metadata, README proof signals, risky public wording, latest GitHub Actions status, and homepage health, then writes Markdown or JSON reports.
+It checks repo metadata, README proof signals, risky public wording, latest GitHub Actions status, homepage health, and optional README links, then writes Markdown or JSON reports.
 
 ## Why This Exists
 
@@ -19,6 +19,7 @@ This tool is a lightweight surface audit. It does not replace a code review.
 - Public text does not include blocked patterns such as local machine paths or sensitive career-status wording.
 - Latest GitHub Actions run succeeded when Actions are expected.
 - Homepage URL returns HTTP 200 when configured.
+- Optional README HTTP(S) link checks.
 
 ## What It Does Not Check
 
@@ -53,6 +54,12 @@ Write structured JSON:
 python -m github_proof_auditor --config configs/karthik-public-repos.json --format json --output reports/karthik-public-repos.json
 ```
 
+Run a stricter README link check:
+
+```powershell
+python -m github_proof_auditor --config configs/karthik-public-repos.json --check-readme-links --output reports/karthik-public-repos-link-check.md
+```
+
 Config format:
 
 ```json
@@ -84,3 +91,4 @@ python -m github_proof_auditor --config configs/karthik-public-repos.json --outp
 - The score is a reviewer-surface heuristic, not an objective quality score.
 - The default blocked-word list is intentionally conservative and may need repo-specific exceptions.
 - Network checks can fail transiently.
+- README link checks are opt-in because they are slower and can be affected by third-party outages.
